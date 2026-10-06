@@ -129,6 +129,61 @@ def ancho_a_largo(paquetes_destino):
     logging.info("  ancho_a_largo: %s filas", len(filas))
     return filas
 
+def ancho_a_largo(paquetes_destino):
+    """CONTRATO: recibe los paquetes crudos de destino; devuelve una lista
+    de dicts con una fila por (año, provincia, destino).
+    """
+    filas = []
+
+    # TODO 1 --------------------------------------------------------------
+    for paquete in paquetes_destino:
+        provincia = paquete["provincia"]
+        columnas = paquete["orden_columnas"]
+
+        # Localizamos el índice del total una sola vez por paquete
+        indice_total = columnas.index(CLAVE_TOTAL)
+
+        for fila_cruda in paquete["data"]:
+            fecha = fila_cruda[0]
+            anio = extraer_anio(fecha)
+
+            # Extraemos los valores ignorando la fecha
+            valores = fila_cruda[1:]
+
+            # Obtenemos el total provincial para este año
+            valor_total_raw = valores[indice_total]
+            total_provincia = (
+                round(valor_total_raw, 2)
+                if valor_total_raw is not None
+                else 0.0
+            )
+
+            # Iteramos sobre cada columna/destino y su valor
+            for i, destino in enumerate(columnas):
+                # 1. El total no es un destino individual
+                if destino == CLAVE_TOTAL:
+                    continue
+
+                valor = valores[i]
+
+                # 2. Si el dato falta (None), se saltea la fila
+                if valor is None:
+                    continue
+
+                # 3. Armamos el dict respetando estrictamente el contrato
+                filas.append(
+                    {
+                        "anio": anio,
+                        "provincia": provincia,
+                        "destino": destino,
+                        "valor_musd": round(valor, 2),
+                        "total_provincia_musd": total_provincia,
+                    }
+                )
+    # ---------------------------------------------------------------------
+
+    logging.info("  ancho_a_largo: %s filas", len(filas))
+    return filas
 
 # ======================================================================
 # 2) COLUMNAS DERIVADAS SIMPLES
@@ -147,6 +202,17 @@ def clasificar_region(destino):
     raise NotImplementedError("TODO 2: implementá clasificar_region()")
     # ---------------------------------------------------------------------
 
+def clasificar_region(destino):
+    """Devuelve la región geoeconómica de un país de destino.
+
+    Ejemplos:  'Brasil' -> 'Mercosur'   |   'China' -> 'Asia'
+
+    El mapeo está en config.REGIONES. Si el país NO está en el
+    diccionario, devolvé config.REGION_POR_DEFECTO en lugar de romper.
+    """
+    # TODO 2 --------------------------------------------------------------
+    return config.REGIONES.get(destino, config.REGION_POR_DEFECTO)
+    # ---------------------------------------------------------------------
 
 def calcular_decada(anio):
     """Devuelve la década de un año como texto.
@@ -159,6 +225,14 @@ def calcular_decada(anio):
     #        Después armá el texto con una f-string.
     raise NotImplementedError("TODO 3: implementá calcular_decada()")
     # ---------------------------------------------------------------------
+
+def calcular_decada(anio):
+    """Devuelve la década de un año como texto (ej. 1993 -> '1990s')."""
+    # TODO 3 --------------------------------------------------------------
+    inicio_decada = (anio // 10) * 10
+    return f"{inicio_decada}s"
+    # ---------------------------------------------------------------------
+
 
 
 def calcular_participacion(valor, total):
@@ -174,6 +248,22 @@ def calcular_participacion(valor, total):
     raise NotImplementedError("TODO 4: implementá calcular_participacion()")
     # ---------------------------------------------------------------------
 
+def calcular_participacion(valor, total):
+    """Qué porcentaje del total exportado representa este destino.
+
+    Ejemplo:  valor=110.93, total=401.74  ->  27.61
+
+    Devolvé None si el total es cero o None: dividir por cero rompe el
+    programa, y un dato ausente es más honesto que un cero inventado.
+    Redondeá a 2 decimales.
+    """
+    # TODO 4 --------------------------------------------------------------
+    if not total or valor is None:
+        return None
+
+    porcentaje = (valor / total) * 100
+    return round(porcentaje, 2)
+    # ---------------------------------------------------------------------
 
 def agregar_derivadas_simples(filas):
     """Agrega region_destino, decada y participacion_pct a cada fila.
@@ -204,6 +294,21 @@ def calcular_variacion(actual, anterior):
     raise NotImplementedError("TODO 5: implementá calcular_variacion()")
     # ---------------------------------------------------------------------
 
+def calcular_variacion(actual, anterior):
+    """Variación porcentual entre dos valores.
+
+    Fórmula:  (actual - anterior) / anterior * 100
+    Ejemplo:  actual=110.93, anterior=75.79  ->  46.36
+
+    Devolvé None si 'anterior' es None o cero. Redondeá a 2 decimales.
+    """
+    # TODO 5 --------------------------------------------------------------
+    if not anterior or actual is None:
+        return None
+
+    variacion = ((actual - anterior) / anterior) * 100
+    return round(variacion, 2)
+    # ---------------------------------------------------------------------
 
 def agregar_variacion_interanual(filas):
     """Agrega var_interanual_pct comparando cada fila con el año previo
@@ -226,6 +331,32 @@ def agregar_variacion_interanual(filas):
     raise NotImplementedError("TODO 6: implementá agregar_variacion_interanual()")
     # ---------------------------------------------------------------------
 
+def agregar_variacion_interanual(filas):
+    """Calcula y agrega el campo 'var_interanual_pct' a cada fila buscando
+
+    el valor del año anterior (anio - 1) para la misma provincia y destino.
+    """
+    # TODO 6 --------------------------------------------------------------
+    # 1. Primera pasada: indexar los valores en un diccionario
+    indice = {
+        (fila["provincia"], fila["destino"], fila["anio"]): fila["valor_musd"]
+        for fila in filas
+    }
+
+    # 2. Segunda pasada: calcular y asignar la variación interanual
+    for fila in filas:
+        clave_anterior = (
+            fila["provincia"],
+            fila["destino"],
+            fila["anio"] - 1,
+        )
+        valor_anterior = indice.get(clave_anterior)
+        fila["var_interanual_pct"] = calcular_variacion(
+            fila["valor_musd"], valor_anterior
+        )
+
+    return filas
+    # ---------------------------------------------------------------------
 
 # ======================================================================
 # 4) RANKING DE DESTINOS
@@ -252,6 +383,29 @@ def agregar_ranking(filas, top_n=None):
     raise NotImplementedError("TODO 7: implementá agregar_ranking()")
     # ---------------------------------------------------------------------
 
+def agregar_ranking(filas, top_n=3):
+    """Calcula el ranking de cada destino por (provincia, anio) según 'valor_musd'
+
+    en orden descendente y marca si pertenece al top N (por defecto 3).
+    """
+    # TODO 7 --------------------------------------------------------------
+    # 1. Agrupar las filas por (provincia, anio)
+    grupos = {}
+    for fila in filas:
+        clave = (fila["provincia"], fila["anio"])
+        grupos.setdefault(clave, []).append(fila)
+
+    # 2. Ordenar cada grupo y asignar ranking y pertenencia al top_n
+    for grupo in grupos.values():
+        grupo_ordenado = sorted(
+            grupo, key=lambda f: f["valor_musd"], reverse=True
+        )
+        for posicion, fila in enumerate(grupo_ordenado, start=1):
+            fila["ranking_destino"] = posicion
+            fila["es_top3"] = posicion <= top_n
+
+    return filas
+    # ---------------------------------------------------------------------
 
 # ======================================================================
 # 5) JOIN CON LOS RUBROS
@@ -286,6 +440,56 @@ def construir_indice_rubros(paquetes_rubro):
     logging.info("  índice de rubros: %s claves (provincia, año)", len(indice))
     return indice
 
+def construir_indice_rubros(paquetes_rubro):
+    """Construye un índice por (provincia, anio) con:
+
+    - 'rubro_principal': rubro con mayor exportación.
+    - 'pp_participacion_pct': porcentaje que representa ese rubro sobre
+      la suma de todos los rubros del año (redondeado a 2 decimales).
+    """
+    indice = {}
+
+    # TODO 8a -------------------------------------------------------------
+    for paquete in paquetes_rubro:
+        provincia = paquete["provincia"]
+        columnas = paquete["orden_columnas"]
+
+        for fila_cruda in paquete["data"]:
+            anio = extraer_anio(fila_cruda[0])
+            valores = fila_cruda[1:]
+
+            # Mapeamos rubro -> valor descartando nulos y ceros si corresponde
+            valores_por_rubro = {
+                rubro: valor
+                for rubro, valor in zip(columnas, valores)
+                if valor is not None
+            }
+
+            if not valores_por_rubro:
+                continue
+
+            # Rubro con mayor valor exportado
+            rubro_max = max(valores_por_rubro, key=valores_por_rubro.get)
+            valor_max = valores_por_rubro[rubro_max]
+
+            # Suma de todos los rubros válidos del año
+            total_rubros = sum(valores_por_rubro.values())
+
+            # Participación porcentual del rubro líder
+            pp_participacion = (
+                round((valor_max / total_rubros) * 100, 2)
+                if total_rubros > 0
+                else 0.0
+            )
+
+            indice[(provincia, anio)] = {
+                "rubro_principal": rubro_max,
+                "pp_participacion_pct": pp_participacion,
+            }
+    # ---------------------------------------------------------------------
+
+    logging.info("  índice de rubros: %s claves (provincia, año)", len(indice))
+    return indice
 
 def unir_con_rubros(filas, indice_rubros):
     """Join por clave compuesta (provincia, anio).
@@ -301,6 +505,25 @@ def unir_con_rubros(filas, indice_rubros):
     raise NotImplementedError("TODO 8b: implementá unir_con_rubros()")
     # ---------------------------------------------------------------------
 
+def unir_con_rubros(filas, indice_rubros):
+    """Enriquece cada fila con 'rubro_principal' y 'pp_participacion_pct'
+
+    a partir de la tupla (provincia, anio). Si no hay datos, asigna None.
+    """
+    # TODO 8b -------------------------------------------------------------
+    for fila in filas:
+        clave = (fila["provincia"], fila["anio"])
+        datos_rubro = indice_rubros.get(clave)
+
+        if datos_rubro:
+            fila["rubro_principal"] = datos_rubro["rubro_principal"]
+            fila["pp_participacion_pct"] = datos_rubro["pp_participacion_pct"]
+        else:
+            fila["rubro_principal"] = None
+            fila["pp_participacion_pct"] = None
+
+    return filas
+    # ---------------------------------------------------------------------
 
 # ======================================================================
 # ORQUESTACIÓN DEL TRANSFORM  (ya resuelta: no hace falta tocarla)
