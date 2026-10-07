@@ -315,20 +315,6 @@ def construir_indice_rubros(paquetes_rubro):
     return indice
 
 def unir_con_rubros(filas, indice_rubros):
-    """Join por clave compuesta (provincia, anio).
-
-    Debe ser un LEFT JOIN: si una combinación no está en el índice, las
-    dos columnas quedan en None, pero LA FILA NO SE PIERDE.
-
-    CONTRATO: modifica y devuelve la misma lista de filas.
-    """
-    # TODO 8b -------------------------------------------------------------
-    # Para cada fila, buscá indice_rubros.get((provincia, anio)) y asigná
-    # 'rubro_principal' y 'pp_participacion_pct'. Si no hay match, None.
-    raise NotImplementedError("TODO 8b: implementá unir_con_rubros()")
-    # ---------------------------------------------------------------------
-
-def unir_con_rubros(filas, indice_rubros):
     """Enriquece cada fila con 'rubro_principal' y 'pp_participacion_pct'
 
     a partir de la tupla (provincia, anio). Si no hay datos, asigna None.
