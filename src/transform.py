@@ -264,36 +264,6 @@ def agregar_ranking(filas, top_n=3):
 # 5) JOIN CON LOS RUBROS
 # ======================================================================
 def construir_indice_rubros(paquetes_rubro):
-    """CONTRATO: recibe los paquetes crudos de rubro; devuelve un índice
-
-        {(provincia, anio): {"rubro_principal": str,
-                             "pp_participacion_pct": float}}
-
-    Ese índice es la "tabla derecha" del join: la clave compuesta
-    (provincia, anio) es lo que permite pegarlo al dataset de destinos.
-
-    Para cada (provincia, año):
-      - rubro_principal      = el rubro con MAYOR valor ese año.
-      - pp_participacion_pct = qué % del total de ese año representan los
-                               'Productos primarios', redondeado a 2 dec.
-
-    Los paquetes tienen la misma forma que en ancho_a_largo(), pero sus
-    columnas son los 4 rubros (sin columna de total).
-    """
-    indice = {}
-
-    # TODO 8a -------------------------------------------------------------
-    # Pistas:
-    #   - Para el rubro con mayor valor:  max(dic, key=dic.get)
-    #   - El total del año es la suma de los 4 rubros: sum(dic.values())
-    #   - Descartá los valores None antes de sumar.
-    raise NotImplementedError("TODO 8a: implementá construir_indice_rubros()")
-    # ---------------------------------------------------------------------
-
-    logging.info("  índice de rubros: %s claves (provincia, año)", len(indice))
-    return indice
-
-def construir_indice_rubros(paquetes_rubro):
     """Construye un índice por (provincia, anio) con:
 
     - 'rubro_principal': rubro con mayor exportación.
