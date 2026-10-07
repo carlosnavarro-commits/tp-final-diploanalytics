@@ -24,26 +24,32 @@ import transform
 class TestDerivadasSimples(unittest.TestCase):
 
     def test_extraer_anio(self):
+        """Comprueba que se extraiga el año de fechas ISO."""
         self.assertEqual(transform.extraer_anio("1993-01-01"), 1993)
         self.assertEqual(transform.extraer_anio("2024-01-01"), 2024)
 
     def test_calcular_decada(self):
+        """Verifica la década calculada en distintos límites temporales."""
         self.assertEqual(transform.calcular_decada(1993), "1990s")
         self.assertEqual(transform.calcular_decada(2000), "2000s")
         self.assertEqual(transform.calcular_decada(2024), "2020s")
 
     def test_clasificar_region_conocida(self):
+        """Comprueba regiones asignadas a destinos conocidos."""
         self.assertEqual(transform.clasificar_region("Brasil"), "Mercosur")
         self.assertEqual(transform.clasificar_region("China"), "Asia")
 
     def test_clasificar_region_desconocida(self):
+        """Comprueba que un destino desconocido use la región por defecto."""
         # Un país no mapeado no debe romper el pipeline
         self.assertEqual(transform.clasificar_region("Atlantida"), "Otros")
 
     def test_participacion(self):
+        """Verifica el cálculo y redondeo de una participación porcentual."""
         self.assertEqual(transform.calcular_participacion(110.93, 401.74), 27.61)
 
     def test_participacion_total_cero(self):
+        """Comprueba el resultado cuando el total es cero o no está disponible."""
         # Dividir por cero rompería: esperamos None, no una excepción
         self.assertIsNone(transform.calcular_participacion(10.0, 0))
         self.assertIsNone(transform.calcular_participacion(10.0, None))
@@ -52,20 +58,39 @@ class TestDerivadasSimples(unittest.TestCase):
 class TestVariacion(unittest.TestCase):
 
     def test_variacion_positiva(self):
+        """Verifica el porcentaje de aumento entre dos años."""
         # Chaco -> China: 75.79 (2023) a 110.93 (2024) = +46.36 %
         self.assertEqual(transform.calcular_variacion(110.93, 75.79), 46.36)
 
     def test_variacion_negativa(self):
+        """Verifica el porcentaje de disminución entre dos años."""
         self.assertEqual(transform.calcular_variacion(50.0, 100.0), -50.0)
 
     def test_variacion_sin_anio_anterior(self):
+        """Comprueba que no se calcule variación sin un valor anterior válido."""
         self.assertIsNone(transform.calcular_variacion(100.0, None))
         self.assertIsNone(transform.calcular_variacion(100.0, 0))
+
+    def test_agregar_variacion_interanual_por_serie(self):
+        """Asigna variación solo si existe el año previo de la misma serie."""
+        filas = [
+            {"provincia": "Chaco", "destino": "China", "anio": 2023, "valor_musd": 75.79},
+            {"provincia": "Chaco", "destino": "China", "anio": 2024, "valor_musd": 110.93},
+            {"provincia": "Misiones", "destino": "China", "anio": 2024, "valor_musd": 20.0},
+        ]
+
+        resultado = transform.agregar_variacion_interanual(filas)
+
+        self.assertIs(resultado, filas)
+        self.assertIsNone(filas[0]["var_interanual_pct"])
+        self.assertEqual(filas[1]["var_interanual_pct"], 46.36)
+        self.assertIsNone(filas[2]["var_interanual_pct"])
 
 
 class TestAnchoALargo(unittest.TestCase):
 
     def paquete_minimo(self):
+        """Construye datos crudos pequeños para probar la conversión a formato largo."""
         return [{
             "provincia": "Chaco",
             "grupo": "destino",
@@ -77,21 +102,25 @@ class TestAnchoALargo(unittest.TestCase):
         }]
 
     def test_cantidad_de_filas(self):
+        """Comprueba que se genere una fila por año y destino informado."""
         # 2 años x 2 destinos (el total NO es un destino) = 4 filas
         filas = transform.ancho_a_largo(self.paquete_minimo())
         self.assertEqual(len(filas), 4)
 
     def test_el_total_no_es_un_destino(self):
+        """Comprueba que la columna total no se trate como un destino."""
         filas = transform.ancho_a_largo(self.paquete_minimo())
         self.assertNotIn("__TOTAL__", [f["destino"] for f in filas])
 
     def test_total_se_guarda_en_cada_fila(self):
+        """Comprueba que el total provincial se copie a cada destino del año."""
         filas = transform.ancho_a_largo(self.paquete_minimo())
         de_2024 = [f for f in filas if f["anio"] == 2024]
         for fila in de_2024:
             self.assertEqual(fila["total_provincia_musd"], 401.74)
 
     def test_saltea_faltantes(self):
+        """Comprueba que se omitan observaciones sin valor de exportación."""
         paquete = self.paquete_minimo()
         paquete[0]["data"][0][1] = None      # China 2023 sin dato
         filas = transform.ancho_a_largo(paquete)
@@ -101,6 +130,7 @@ class TestAnchoALargo(unittest.TestCase):
 class TestRanking(unittest.TestCase):
 
     def test_ranking_por_provincia_y_anio(self):
+        """Verifica el orden descendente y la marca de pertenencia al top N."""
         filas = [
             {"provincia": "Chaco", "anio": 2024, "destino": "China", "valor_musd": 110.9},
             {"provincia": "Chaco", "anio": 2024, "destino": "Brasil", "valor_musd": 18.1},
@@ -118,6 +148,7 @@ class TestRanking(unittest.TestCase):
 class TestJoinRubros(unittest.TestCase):
 
     def indice(self):
+        """Construye el índice de rubros de prueba para una provincia y un año."""
         paquetes = [{
             "provincia": "Chaco",
             "grupo": "rubro",
@@ -127,39 +158,37 @@ class TestJoinRubros(unittest.TestCase):
         return transform.construir_indice_rubros(paquetes)
 
     def test_rubro_principal(self):
+        """Comprueba que el rubro de mayor valor quede identificado."""
         indice = self.indice()
         self.assertEqual(indice[("Chaco", 2024)]["rubro_principal"], "Productos primarios")
 
     def test_participacion_primarios(self):
+        """Verifica la participación porcentual del rubro principal."""
         indice = self.indice()
         self.assertEqual(indice[("Chaco", 2024)]["pp_participacion_pct"], 81.3)
 
     def test_join_conserva_filas_sin_match(self):
+        """Comprueba que el join conserve filas sin datos de rubros coincidentes."""
         filas = [{"provincia": "Chaco", "anio": 1990, "destino": "China"}]
         transform.unir_con_rubros(filas, self.indice())
         self.assertEqual(len(filas), 1)              # LEFT JOIN: no se pierde
         self.assertIsNone(filas[0]["rubro_principal"])
 
-
 # ======================================================================
 # TODO 13 (BONUS) — Escribí vos estos dos tests
 # ======================================================================
 class TestPropios(unittest.TestCase):
-    """Sumá tus propios casos. Ideas:
+    """Casos de prueba propios para verificar casos límite y funciones clave."""
 
-    - ¿Qué pasa si 'paquetes_destino' viene vacío? ancho_a_largo()
-      debería devolver [] y no romper.
-    - ¿El ranking asigna bien cuando hay empate en valor_musd?
-    - ¿calcular_decada() funciona con un año de otra década, como 2010?
-    """
-
-    @unittest.skip("TODO 13: quitá este skip y escribí el test")
     def test_lista_vacia(self):
-        self.fail("Escribí este test")
+        """Verifica que ancho_a_largo([]) devuelva una lista vacía sin fallar."""
+        resultado = transform.ancho_a_largo([])
+        self.assertEqual(resultado, [])
 
-    @unittest.skip("TODO 13: quitá este skip y escribí el test")
     def test_a_eleccion(self):
-        self.fail("Escribí este test")
+        """Comprueba la década para años de la década de 2000 y de 2010."""
+        self.assertEqual(transform.calcular_decada(2010), "2010s")
+        self.assertEqual(transform.calcular_decada(2005), "2000s")
 
 
 if __name__ == "__main__":

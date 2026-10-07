@@ -1,5 +1,4 @@
-"""
-MAIN — Orquestación del pipeline
+"""MAIN — Orquestación del pipeline
 =================================
 
 Esta es la función "directora": no calcula nada, solo llama a las otras
@@ -29,7 +28,7 @@ import transform
 
 
 def configurar_logging():
-    """Consola + archivo. Cuando esto falle, el log va a contar la historia."""
+    """Configura el registro de la ejecución en consola y en un archivo."""
     os.makedirs(config.DIR_LOGS, exist_ok=True)
     logging.basicConfig(
         level=logging.INFO,
@@ -44,6 +43,17 @@ def configurar_logging():
 
 
 def main(sin_internet=False):
+    """Ejecuta extracción, transformación, validación y guardado del pipeline.
+
+    Args:
+        sin_internet: si es True, usa los datos crudos guardados localmente.
+
+    Returns:
+        El resumen generado para la corrida.
+
+    Raises:
+        RuntimeError: si se solicita el modo sin internet y no hay datos locales.
+    """
     configurar_logging()
     logging.info("=" * 62)
     logging.info("PIPELINE EXPORTACIONES NEA — inicio")

@@ -31,10 +31,10 @@ from transform import COLUMNAS
 # QUALITY CHECKS
 # ======================================================================
 def chequear_cantidad(filas, minimo=None):
-    """¿Tenemos todas las filas que esperábamos?  [RESUELTO — de ejemplo]
+    """Comprueba que el conjunto tenga al menos la cantidad mínima de filas.
 
-    Fijate el patrón: devuelve una tupla (bool, mensaje). Todos los
-    checks tienen que devolver lo mismo para que validar() los trate igual.
+    Si no se indica ``minimo``, usa el umbral de configuración.
+    Devuelve una tupla con el resultado booleano y un mensaje descriptivo.
     """
     if minimo is None:
         minimo = config.MINIMO_FILAS_ESPERADAS
@@ -43,8 +43,9 @@ def chequear_cantidad(filas, minimo=None):
 
 
 def chequear_columnas(filas):
-    """¿Todas las filas tienen exactamente las columnas del contrato?
-    [RESUELTO — de ejemplo]
+    """Comprueba que todas las filas respeten el esquema definido en COLUMNAS.
+
+    Devuelve una tupla con el resultado booleano y un mensaje descriptivo.
     """
     esperadas = set(COLUMNAS)
     for fila in filas:
@@ -55,33 +56,43 @@ def chequear_columnas(filas):
 
 
 def chequear_unicidad(filas):
-    """¿Hay duplicados? La clave del dataset es (provincia, anio, destino).
+    """Verifica que no existan duplicados para la clave (provincia, destino, anio).
 
-    Debe devolver (bool, mensaje), igual que los checks de arriba.
+    Devuelve (resultado, mensaje), igual que los demás checks.
     """
     # TODO 9 --------------------------------------------------------------
-    # Pista: es el patrón del set que viste en la Clase 3. Armá la lista de
-    # claves (una tupla por fila) y compará len(lista) con len(set(lista)).
-    raise NotImplementedError("TODO 9: implementá chequear_unicidad()")
+    claves = [(fila["provincia"], fila["destino"], fila["anio"]) for fila in filas]
+    duplicados = len(claves) - len(set(claves))
+    ok = duplicados == 0
+    return ok, f"unicidad: {duplicados} claves duplicadas"
     # ---------------------------------------------------------------------
 
 
 def chequear_rangos(filas):
-    """¿Los valores son plausibles?
+    """Verifica que los porcentajes calculados se encuentren en el rango [0, 100].
 
-    Un valor negativo o mayor a config.VALOR_MAXIMO_RAZONABLE es
-    sospechoso: no existen exportaciones negativas.
+    Devuelve (resultado, mensaje), igual que los demás checks. Los valores
+    None se consideran válidos.
     """
     # TODO 10 -------------------------------------------------------------
-    # Pista: una comprensión de lista con la condición al final te da
-    # directamente las filas fuera de rango; después mirás cuántas son.
-    raise NotImplementedError("TODO 10: implementá chequear_rangos()")
+    # Se filtran observaciones donde la participación esté fuera del intervalo [0, 100]
+    fuera_de_rango = [
+        fila
+        for fila in filas
+        if fila.get("participacion_pct") is not None
+        and not (0.0 <= fila["participacion_pct"] <= 100.0)
+    ]
+
+    ok = len(fuera_de_rango) == 0
+    return ok, f"rangos: {len(fuera_de_rango)} participaciones fuera de [0, 100]"
     # ---------------------------------------------------------------------
 
 
 def chequear_cobertura(filas):
-    """Advertencia (no crítica): ¿cuántos nulos quedaron en las derivadas?
-    [RESUELTO]
+    """Evalúa la cobertura de las columnas derivadas y prepara una advertencia.
+
+    La ausencia de variación en el primer año es esperable; la falta de rubro
+    determina si el check queda como OK o AVISO. Devuelve resultado y mensaje.
     """
     sin_variacion = sum(1 for f in filas if f["var_interanual_pct"] is None)
     sin_rubro = sum(1 for f in filas if f["rubro_principal"] is None)
@@ -91,12 +102,16 @@ def chequear_cobertura(filas):
 
 
 def validar(filas):
-    """Corre todos los checks.  [RESUELTO]
+    """Ejecuta los controles de calidad y devuelve su detalle.
 
     Los CRÍTICOS cortan el pipeline lanzando una excepción ("fallar
     temprano y ruidosamente"). La cobertura solo deja una advertencia.
 
-    Retorna una lista de dicts con el detalle, para el resumen JSON.
+    Returns:
+        Lista de diccionarios con el nombre de cada check y su estado.
+
+    Raises:
+        ValueError: si falla cualquiera de los controles críticos.
     """
     criticos = [
         chequear_cantidad(filas),
@@ -128,8 +143,10 @@ def validar(filas):
 # PERSISTENCIA
 # ======================================================================
 def guardar_csv(filas, carpeta=None, nombre=None):
-    """Escribe el dataset final. Modo 'w': cada corrida lo reemplaza.
-    [RESUELTO — usalo de modelo para el resto]
+    """Guarda las filas como CSV y devuelve la ruta del archivo generado.
+
+    El archivo se sobrescribe en cada corrida. Si no se especifican,
+    ``carpeta`` y ``nombre`` se toman de la configuración.
     """
     carpeta = carpeta or config.DIR_PROCESSED
     nombre = nombre or config.ARCHIVO_SALIDA_CSV
@@ -146,63 +163,113 @@ def guardar_csv(filas, carpeta=None, nombre=None):
 
 
 def construir_resumen(filas, detalle_checks):
-    """Arma el resumen del proceso: metadatos + estadísticas descriptivas.
+    """Resume metadatos, estadísticas de exportación y resultados de calidad.
 
-    Este JSON es la "ficha técnica" del dataset: quien lo reciba tiene que
-    poder saber de dónde salió, cuándo y qué contiene, SIN abrir el CSV.
+    Args:
+        filas: registros transformados del dataset.
+        detalle_checks: resultados devueltos por :func:`validar`.
 
-    CONTRATO: devolvé un dict que incluya al menos estas claves:
-
-        dataset            (str)  nombre descriptivo
-        fuente             (str)  de dónde salieron los datos
-        unidad             (str)  "millones de dólares FOB"
-        generado           (str)  fecha y hora de esta corrida
-        filas              (int)
-        columnas           (int)
-        periodo            (dict) {"desde": anio_min, "hasta": anio_max}
-        provincias         (list) ordenada
-        valor_musd         (dict) {"minimo":…, "maximo":…, "promedio":…}
-        quality_checks     (list) el detalle_checks que recibís
+    Returns:
+        Diccionario serializable con información del dataset y la corrida.
     """
-    # TODO 11 -------------------------------------------------------------
-    # Pistas:
-    #   - Para la lista de valores: [f["valor_musd"] for f in filas]
-    #   - min(), max() y sum()/len() ya los conocés.
-    #   - Para provincias únicas y ordenadas: sorted({f["provincia"] for f in filas})
-    #   - Para la fecha: datetime.now().strftime("%Y-%m-%d %H:%M")
-    #   - Podés agregar más claves si querés (suma puntos en la rúbrica).
-    raise NotImplementedError("TODO 11: implementá construir_resumen()")
-    # ---------------------------------------------------------------------
+    # Extracción de valores numéricos válidos
+    valores = [
+        f["valor_musd"] for f in filas if f.get("valor_musd") is not None
+    ]
 
+    # Conjuntos únicos ordenados
+    provincias_unicas = sorted({f["provincia"] for f in filas})
+    anios_unicos = sorted({f["anio"] for f in filas})
+    destinos_unicos = sorted({f["destino"] for f in filas})
+    generado = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+    # Métricas agregadas
+    total_exportado = round(sum(valores), 2) if valores else 0.0
+    promedio_exportado = (
+        round(sum(valores) / len(valores), 2) if valores else 0.0
+    )
+    min_exportado = min(valores) if valores else 0.0
+    max_exportado = max(valores) if valores else 0.0
+
+    resumen = {
+        "dataset": "Exportaciones por provincia y país de destino — NEA",
+        "fuente": "INDEC, API de Series de Tiempo de datos.gob.ar",
+        "unidad": "millones de dólares FOB",
+        "generado": generado,
+        "filas": len(filas),
+        "columnas": len(COLUMNAS),
+        "periodo": {
+            "desde": min(anios_unicos) if anios_unicos else None,
+            "hasta": max(anios_unicos) if anios_unicos else None,
+        },
+        "valor_musd": {
+            "minimo": min_exportado if valores else None,
+            "maximo": max_exportado if valores else None,
+            "promedio": promedio_exportado if valores else None,
+        },
+        "quality_checks": detalle_checks,
+        "fecha_procesamiento": generado,
+        "total_filas": len(filas),
+        "cant_provincias": len(provincias_unicas),
+        "provincias": provincias_unicas,
+        "anio_min": min(anios_unicos) if anios_unicos else None,
+        "anio_max": max(anios_unicos) if anios_unicos else None,
+        "cant_destinos": len(destinos_unicos),
+        "total_exportado_musd": total_exportado,
+        "promedio_exportado_musd": promedio_exportado,
+        "min_exportado_musd": min_exportado,
+        "max_exportado_musd": max_exportado,
+    }
+
+    return resumen
 
 def guardar_resumen(resumen, carpeta=None, nombre=None):
-    """Escribe el resumen en JSON, legible por humanos y por programas.
+    """Escribe el resumen como JSON legible y devuelve la ruta del archivo.
 
-    Acordate de los dos argumentos que vimos: ensure_ascii=False para que
-    las tildes se guarden bien, e indent=2 para que sea legible.
+    Si no se especifican, ``carpeta`` y ``nombre`` se toman de la configuración.
     """
-    # TODO 12a ------------------------------------------------------------
-    # Muy parecido a guardar_csv(), pero con json.dump().
-    raise NotImplementedError("TODO 12a: implementá guardar_resumen()")
-    # ---------------------------------------------------------------------
+    carpeta = carpeta or config.DIR_PROCESSED
+    nombre = nombre or config.ARCHIVO_SALIDA_JSON
+    os.makedirs(carpeta, exist_ok=True)
+    ruta_archivo = os.path.join(carpeta, nombre)
+
+    with open(ruta_archivo, mode="w", encoding="utf-8") as f:
+        json.dump(resumen, f, indent=4, ensure_ascii=False)
+    logging.info("  JSON: %s", ruta_archivo)
+    return ruta_archivo
 
 
 def escribir_log_corrida(resumen, carpeta=None, nombre=None):
-    """Agrega UNA línea al historial del pipeline.
+    """Añade al log una línea con fecha, estado, cantidad de filas y período.
 
-    Modo "a" (append): nunca borra lo anterior. Cada corrida deja su rastro.
-    Sugerencia de formato:
-
-        2026-08-02 14:30 | OK | 1408 filas | 1993-2024
+    Devuelve la ruta del archivo de log; si no se indica, usa la configuración.
     """
-    # TODO 12b ------------------------------------------------------------
-    raise NotImplementedError("TODO 12b: implementá escribir_log_corrida()")
+    carpeta = carpeta or config.DIR_LOGS
+    nombre = nombre or config.ARCHIVO_LOG
+    os.makedirs(carpeta, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    periodo = resumen["periodo"]
+    linea_log = (
+        f"[{timestamp}] OK | {resumen['filas']} filas | "
+        f"{periodo['desde']}-{periodo['hasta']}\n"
+    )
+    ruta_log = os.path.join(carpeta, nombre)
+
+    with open(ruta_log, mode="a", encoding="utf-8") as f:
+        f.write(linea_log)
+    logging.info("  log: %s", ruta_log)
+    return ruta_log
     # ---------------------------------------------------------------------
 
 
 def cargar(filas):
-    """CONTRATO: recibe las filas finales; valida y persiste las 3 salidas.
-    [RESUELTO]
+    """Valida las filas y guarda CSV, resumen JSON y log de la corrida.
+
+    Returns:
+        El resumen de la corrida, incluido el detalle de los controles.
+
+    Raises:
+        ValueError: si falla un control de calidad crítico.
     """
     logging.info("LOAD: validando")
     detalle = validar(filas)
