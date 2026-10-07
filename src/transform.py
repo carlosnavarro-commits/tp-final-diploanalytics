@@ -155,20 +155,6 @@ def calcular_decada(anio):
     # ---------------------------------------------------------------------
 
 
-
-def calcular_participacion(valor, total):
-    """Qué porcentaje del total exportado representa este destino.
-
-    Ejemplo:  valor=110.93, total=401.74  ->  27.61
-
-    Devolvé None si el total es cero o None: dividir por cero rompe el
-    programa, y un dato ausente es más honesto que un cero inventado.
-    Redondeá a 2 decimales.
-    """
-    # TODO 4 --------------------------------------------------------------
-    raise NotImplementedError("TODO 4: implementá calcular_participacion()")
-    # ---------------------------------------------------------------------
-
 def calcular_participacion(valor, total):
     """Qué porcentaje del total exportado representa este destino.
 
