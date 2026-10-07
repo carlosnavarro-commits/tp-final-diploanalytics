@@ -133,19 +133,6 @@ def ancho_a_largo(paquetes_destino):
 # ======================================================================
 # 2) COLUMNAS DERIVADAS SIMPLES
 # ======================================================================
-def clasificar_region(destino):
-    """Devuelve la región geoeconómica de un país de destino.
-
-    Ejemplos:  'Brasil' -> 'Mercosur'   |   'China' -> 'Asia'
-
-    El mapeo está en config.REGIONES. Si el país NO está en el
-    diccionario, devolvé config.REGION_POR_DEFECTO en lugar de romper.
-    """
-    # TODO 2 --------------------------------------------------------------
-    # Una sola línea. Pista: el método .get() de los diccionarios acepta
-    # un segundo argumento con el valor por defecto (lo viste en la Clase 3).
-    raise NotImplementedError("TODO 2: implementá clasificar_region()")
-    # ---------------------------------------------------------------------
 
 def clasificar_region(destino):
     """Devuelve la región geoeconómica de un país de destino.
