@@ -77,61 +77,6 @@ def extraer_anio(fecha_texto):
 def ancho_a_largo(paquetes_destino):
     """CONTRATO: recibe los paquetes crudos de destino; devuelve una lista
     de dicts con una fila por (año, provincia, destino).
-
-    Cada dict debe tener exactamente estas 5 claves:
-        anio                  (int)
-        provincia             (str)
-        destino               (str)
-        valor_musd            (float, redondeado a 2 decimales)
-        total_provincia_musd  (float, redondeado a 2 decimales)
-
-    Cada paquete tiene esta forma:
-        {
-          "provincia": "Chaco",
-          "orden_columnas": ["China", "Brasil", ..., "__TOTAL__"],
-          "data": [["1993-01-01", 12.3, 45.6, ..., 120.0], ...]
-        }
-
-    En cada fila de 'data', el elemento 0 es la fecha y los siguientes
-    son los valores, EN EL MISMO ORDEN que 'orden_columnas'.
-
-    Ojo con tres cosas:
-      - La columna CLAVE_TOTAL no es un destino: no genera fila propia,
-        pero su valor va en 'total_provincia_musd' de todas las filas
-        de ese año.
-      - Si un valor es None, salteá esa observación (patrón 'continue').
-      - Redondeá los valores a 2 decimales con round().
-    """
-    filas = []
-
-    # TODO 1 --------------------------------------------------------------
-    # Recorré cada paquete, y dentro de cada uno cada fila de 'data'.
-    #
-    # Pistas:
-    #   - Para separar fecha y valores:   fecha = fila_cruda[0]
-    #                                     valores = fila_cruda[1:]
-    #   - Para saber en qué posición está el total:
-    #                                     columnas.index(CLAVE_TOTAL)
-    #   - Para recorrer nombre y posición a la vez:
-    #                                     for i, nombre in enumerate(columnas)
-    #   - Usá extraer_anio() para el año.
-    #
-    # Estructura sugerida (bucles anidados, como en la Clase 3):
-    #   for paquete in paquetes_destino:
-    #       ... leer provincia y orden_columnas ...
-    #       for fila_cruda in paquete["data"]:
-    #           ... calcular anio y total ...
-    #           for posicion, nombre in enumerate(columnas):
-    #               ... saltear el total y los None, y hacer filas.append({...})
-    raise NotImplementedError("TODO 1: implementá ancho_a_largo()")
-    # ---------------------------------------------------------------------
-
-    logging.info("  ancho_a_largo: %s filas", len(filas))
-    return filas
-
-def ancho_a_largo(paquetes_destino):
-    """CONTRATO: recibe los paquetes crudos de destino; devuelve una lista
-    de dicts con una fila por (año, provincia, destino).
     """
     filas = []
 
