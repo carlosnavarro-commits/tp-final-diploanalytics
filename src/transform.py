@@ -236,28 +236,6 @@ def agregar_variacion_interanual(filas):
 # ======================================================================
 # 4) RANKING DE DESTINOS
 # ======================================================================
-def agregar_ranking(filas, top_n=None):
-    """Agrega ranking_destino (1 = el que más exportó) y es_top3 (bool).
-
-    El ranking se calcula DENTRO de cada grupo (provincia, año): ser el
-    destino #1 de Chaco en 2024 no dice nada sobre Misiones en 1998.
-
-    CONTRATO: modifica y devuelve la misma lista de filas.
-    """
-    if top_n is None:
-        top_n = config.TOP_N
-
-    # TODO 7 --------------------------------------------------------------
-    # Estrategia sugerida:
-    #   1. Agrupá las filas en un dict cuya clave sea (provincia, anio).
-    #      Pista: dict.setdefault(clave, []).append(fila)
-    #   2. Para cada grupo, ordenalo por valor_musd de mayor a menor:
-    #      sorted(grupo, key=lambda f: f["valor_musd"], reverse=True)
-    #   3. Recorré el grupo ordenado con enumerate(..., start=1) y asigná
-    #      'ranking_destino' y 'es_top3' (un booleano: posición <= top_n).
-    raise NotImplementedError("TODO 7: implementá agregar_ranking()")
-    # ---------------------------------------------------------------------
-
 def agregar_ranking(filas, top_n=3):
     """Calcula el ranking de cada destino por (provincia, anio) según 'valor_musd'
 
