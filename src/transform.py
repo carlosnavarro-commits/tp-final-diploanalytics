@@ -198,18 +198,6 @@ def calcular_variacion(actual, anterior):
     Devolvé None si 'anterior' es None o cero. Redondeá a 2 decimales.
     """
     # TODO 5 --------------------------------------------------------------
-    raise NotImplementedError("TODO 5: implementá calcular_variacion()")
-    # ---------------------------------------------------------------------
-
-def calcular_variacion(actual, anterior):
-    """Variación porcentual entre dos valores.
-
-    Fórmula:  (actual - anterior) / anterior * 100
-    Ejemplo:  actual=110.93, anterior=75.79  ->  46.36
-
-    Devolvé None si 'anterior' es None o cero. Redondeá a 2 decimales.
-    """
-    # TODO 5 --------------------------------------------------------------
     if not anterior or actual is None:
         return None
 
