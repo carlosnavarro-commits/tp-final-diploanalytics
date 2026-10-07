@@ -146,17 +146,6 @@ def clasificar_region(destino):
     return config.REGIONES.get(destino, config.REGION_POR_DEFECTO)
     # ---------------------------------------------------------------------
 
-def calcular_decada(anio):
-    """Devuelve la década de un año como texto.
-
-    Ejemplos:  1993 -> '1990s'   |   2024 -> '2020s'
-    """
-    # TODO 3 --------------------------------------------------------------
-    # Pista: la división entera // te da el inicio de la década.
-    #        ¿Cuánto vale (1993 // 10) * 10 ?
-    #        Después armá el texto con una f-string.
-    raise NotImplementedError("TODO 3: implementá calcular_decada()")
-    # ---------------------------------------------------------------------
 
 def calcular_decada(anio):
     """Devuelve la década de un año como texto (ej. 1993 -> '1990s')."""
