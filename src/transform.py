@@ -205,26 +205,6 @@ def calcular_variacion(actual, anterior):
     return round(variacion, 2)
     # ---------------------------------------------------------------------
 
-def agregar_variacion_interanual(filas):
-    """Agrega var_interanual_pct comparando cada fila con el año previo
-    del MISMO destino y la MISMA provincia.
-
-    CONTRATO: modifica y devuelve la misma lista de filas. La primera
-    observación de cada serie queda con None (no hay año anterior).
-    """
-    # TODO 6 --------------------------------------------------------------
-    # Estrategia recomendada (dos pasadas, sin ordenar nada):
-    #
-    #   1. Primera pasada: armá un diccionario 'indice' donde la clave sea
-    #      la tupla (provincia, destino, anio) y el valor sea valor_musd.
-    #
-    #   2. Segunda pasada: para cada fila, buscá en ese índice la clave
-    #      (provincia, destino, anio - 1). Si no está, .get() devuelve None
-    #      y calcular_variacion() ya sabe qué hacer con eso.
-    #
-    # Usar un dict como índice evita recorrer toda la lista por cada fila.
-    raise NotImplementedError("TODO 6: implementá agregar_variacion_interanual()")
-    # ---------------------------------------------------------------------
 
 def agregar_variacion_interanual(filas):
     """Calcula y agrega el campo 'var_interanual_pct' a cada fila buscando
